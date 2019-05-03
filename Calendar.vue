@@ -73,6 +73,7 @@ export default class Calendar extends Vue{
 
                 &.selected{
                     background-color: #ccc;
+                    color: #999;
                 }
             }
         }
