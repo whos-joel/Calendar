@@ -3,13 +3,20 @@
         <div>{{monthYear}}</div>
         <div class="dates-container">
             <div class="date" v-for="date in dates" :key="date.id">
-                <a href="#" 
-                        :class="{'selected' : date.isSelected, 'start' : date.isStart, 'end' : date.isEnd}"
-                        @click="onClick(date.value)"
-                        @mouseenter="onHover(date.value)"
-                        :data-value="date.value">
+                <a href="#" class="" v-if="date.isWithinMonth && date.isWithinRange"
+                        :class="{   'selected' : date.isSelected, 
+                                    'start' : date.isStart, 
+                                    'end' : date.isEnd}"
+                        :data-value="date.value"
+                        @click="date.isWithinRange ? onClick(date.value) : null"
+                        @mouseenter="date.isWithinRange ? onHover(date.value) : null">
                     {{date.date}}
-                    </a>
+                </a>
+                <div v-if="!date.isWithinMonth || !date.isWithinRange"
+                     :class="{  'not-within-month' : !date.isWithinMonth,
+                                'not-within-range' : !date.isWithinRange}">
+                        {{date.date}}
+                </div>
             </div>
        </div>
     </div>
@@ -27,19 +34,19 @@ export default class DatePicker extends Vue{
     //end:number = -1;
 
     @Prop()
-    highlightOnHover:boolean;
+    highlightOnHover!:boolean;
 
     @Prop()
-    startMode:boolean;
+    startMode!:boolean;
 
     @Prop()
-    endMode:boolean;
+    endMode!:boolean;
 
     @Prop({default: -1})
-    start:number;
+    start!:number;
 
     @Prop({default: -1})
-    end:number;
+    end!:number;
 
     @Prop({default: new Date().getMonth()})
     public selectedMonth!: number;
@@ -53,6 +60,13 @@ export default class DatePicker extends Vue{
     @Prop({default: 0})
     public index!: number;
 
+    @Prop()
+    public min?: Date;
+
+    @Prop()
+    public max?: Date;
+
+
     get dates():Object[]{
         let firstDayOfTheMonth = this.getFirstDayOfMonth(this.selectedYear, this.selectedMonth);
         let data:Object[] = [];
@@ -62,11 +76,13 @@ export default class DatePicker extends Vue{
             let value = +date;
             data[i] = {
                 id:i,
-                date: date.date(),
+                date: date.getDate(),
                 value: value,
                 isSelected: this.start > -1 && value > this.start && value < this.end,
                 isStart: value === this.start,
-                isEnd: value === this.end
+                isEnd: value === this.end,
+                isWithinMonth: date.getMonth() === this.selectedMonth,
+                isWithinRange: this.getWithinRange(value)
             }
         }
         return data;
@@ -76,19 +92,32 @@ export default class DatePicker extends Vue{
         return moment(new Date(this.selectedYear, this.selectedMonth)).format('MMM YYYY');
     }
 
+    getWithinRange(date:number):boolean{
+        if(this.min && this.max)
+            return date >= +this.min && date <= +this.max;
+        if(this.min)
+            return date >= +this.min;
+        if(this.max)
+            return date <= +this.max;
+        return true;
+    }
+
     getDate(day: number) {
-        return moment().year(this.selectedYear).month(this.selectedMonth).day(day).startOf("day");
+        return new Date(this.selectedYear, this.selectedMonth, day);
     }
 
     getFirstDayOfMonth(year: number, month: number) {
         return new Date(year, month, 1).getDay();
     }
 
-    onClick(id:number){
-        if(this.startMode)
-            this.highlightForStartMode(id);
+    @Emit("selected")
+    onClick(val:number){
+        if(this.startMode){
+            this.highlightForStartMode(val);
+        }
         else if(this.endMode)
-            this.highlightForEndMode(id);
+            this.highlightForEndMode(val);
+        return val;
     }
 
     highlightForStartMode(id:number){
@@ -164,21 +193,34 @@ export default class DatePicker extends Vue{
         
             .date{
                 width: calc(100% / 7);
-                a{
+                a, > div{
                     text-decoration: none;
                     color: #ccc;
                     background-color: #f7f7f7;
                     display: block;
                     padding: 15px;
                     border:1px solid #fff;
+                    
                     &:focus{
-                        border-color: aqua;
+                        //border: 2px solid aqua;
                     }
                     &.selected{
                         background-color: #ddd;
+                        color: #999;
                     }
                     &.start, &.end{
                         background-color: #ccc;
+                        color: #fff;
+                    }
+                    &.not-within-month{
+                         background-color: #fcfcfc;
+                         color:#ddd;
+                         cursor: not-allowed
+                    }
+                    &.not-within-range{
+                        background-color: #fff;
+                        color:#ddd;
+                         cursor: not-allowed
                     }
                 }
             }
